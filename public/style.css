@@ -94,7 +94,7 @@ body {
   backdrop-filter: blur(18px);
 }
 
-.game-panel {
+ .game-panel {
   padding: 16px 16px 14px;
   display: flex;
   flex-direction: column;
@@ -138,12 +138,20 @@ body {
   color: rgba(255, 255, 255, 0.7);
 }
 
-canvas {
+#game-viewport {
+  position: relative;
   border-radius: 18px;
-  background: radial-gradient(circle at top, #303465, #101020 60%, #050510);
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.7),
     0 18px 40px rgba(0, 0, 0, 0.9);
+}
+
+#game-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: radial-gradient(circle at top, #303465, #101020 60%, #050510);
 }
 
 .side-panel {

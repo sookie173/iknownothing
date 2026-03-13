@@ -34,11 +34,13 @@
               <span id="mood" class="stat-value">Serene</span>
             </div>
           </div>
-          <canvas id="game-canvas" width="900" height="500"></canvas>
+          <div id="game-viewport">
+            <canvas id="game-canvas"></canvas>
+          </div>
           <div class="game-footer">
             <button id="btn-start" class="primary-btn">Start Rolling</button>
             <span class="hint">
-              Move: ← → or A/D · Bark: Space · Sunbathe: S · Jostle: W
+              Move: WASD or Arrows · Throw: Space · Dash: Shift
             </span>
           </div>
         </section>
@@ -52,15 +54,13 @@
           <div class="card glass" id="help-card">
             <h2>Cynic’s Field Manual</h2>
             <p class="help-text">
-              You are Diogenes of Sinope, the original minimalist, rolling your barrel
-              through the agora of Athens.
+              You are Diogenes of Sinope, wheeling his barrel through a crowded Athenian plaza from a bird’s‑eye view.
             </p>
             <ul class="help-list">
-              <li><strong>Roll</strong>: Keep moving to avoid fussy citizens and soldiers.</li>
-              <li><strong>Bark (Space)</strong>: Cynic bark sends hypocrites fleeing.</li>
-              <li><strong>Sunbathe (S)</strong>: Lie down in the sun; time slows briefly.</li>
-              <li><strong>Jostle (W)</strong>: Lightly ram passersby for extra points.</li>
-              <li><strong>Tip</strong>: Survive longer, chain barks and jostles for multipliers.</li>
+              <li><strong>Roll</strong>: Move with WASD or the arrow keys around the plaza.</li>
+              <li><strong>Throw (Space)</strong>: Toss small stones in the direction you last moved.</li>
+              <li><strong>Dash (Shift)</strong>: Short burst that lets you slam into people for bonus points.</li>
+              <li><strong>Tip</strong>: Keep moving, chain dashes and hits without whiffing to build combos.</li>
             </ul>
           </div>
 
