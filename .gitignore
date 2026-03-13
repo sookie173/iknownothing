@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# OS
+.DS_Store
+
+# Local / runtime data (optional: remove if you want to track scores)
+data/scores.json
+
+# Logs
+*.log
+npm-debug.log*
