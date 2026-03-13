@@ -1,0 +1,24 @@
+{
+  "name": "diogenes-barrel-game",
+  "version": "1.0.0",
+  "description": "Web-based Diogenes barrel-rolling game with Node/Express backend and HTML5 canvas frontend.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development nodemon server.js"
+  },
+  "keywords": [
+    "game",
+    "diogenes",
+    "canvas",
+    "express"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Diogenes: Barrel Rolling</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="top-bar">
+        <div class="brand">
+          <span class="brand-mark">Δ</span>
+          <span class="brand-title">Diogenes: Barrel Rolling</span>
+        </div>
+        <div class="top-actions">
+          <button id="btn-toggle-help" class="ghost-btn">How to play</button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="game-panel glass">
+          <div class="game-header">
+            <div class="stat">
+              <span class="stat-label">Score</span>
+              <span id="score" class="stat-value">0</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Time</span>
+              <span id="time" class="stat-value">60</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Mood</span>
+              <span id="mood" class="stat-value">Serene</span>
+            </div>
+          </div>
+          <canvas id="game-canvas" width="900" height="500"></canvas>
+          <div class="game-footer">
+            <button id="btn-start" class="primary-btn">Start Rolling</button>
+            <span class="hint">
+              Move: ← → or A/D · Bark: Space · Sunbathe: S · Jostle: W
+            </span>
+          </div>
+        </section>
+
+        <section class="side-panel">
+          <div class="card glass">
+            <h2>Leaderboard</h2>
+            <ul id="leaderboard" class="leaderboard-list"></ul>
+          </div>
+
+          <div class="card glass" id="help-card">
+            <h2>Cynic’s Field Manual</h2>
+            <p class="help-text">
+              You are Diogenes of Sinope, the original minimalist, rolling your barrel
+              through the agora of Athens.
+            </p>
+            <ul class="help-list">
+              <li><strong>Roll</strong>: Keep moving to avoid fussy citizens and soldiers.</li>
+              <li><strong>Bark (Space)</strong>: Cynic bark sends hypocrites fleeing.</li>
+              <li><strong>Sunbathe (S)</strong>: Lie down in the sun; time slows briefly.</li>
+              <li><strong>Jostle (W)</strong>: Lightly ram passersby for extra points.</li>
+              <li><strong>Tip</strong>: Survive longer, chain barks and jostles for multipliers.</li>
+            </ul>
+          </div>
+
+          <div class="card glass quote-card">
+            <h2>Today’s Maxim</h2>
+            <p id="quote"></p>
+          </div>
+        </section>
+      </main>
+
+      <div id="game-over-modal" class="modal hidden">
+        <div class="modal-content glass">
+          <h2>Game Over</h2>
+          <p class="modal-score">
+            Final score: <span id="final-score">0</span>
+          </p>
+          <form id="score-form" class="score-form">
+            <label>
+              Engrave thy name:
+              <input
+                id="player-name"
+                type="text"
+                maxlength="16"
+                placeholder="Dog of Athens"
+                required
+              />
+            </label>
+            <button type="submit" class="primary-btn full-width">
+              Submit to Posterity
+            </button>
+          </form>
+          <button id="btn-play-again" class="ghost-btn full-width">
+            Roll Again
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="game.js" type="module"></script>
+  </body>
+</html>
+
