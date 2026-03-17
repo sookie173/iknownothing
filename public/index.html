@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Diogenes: Barrel Rolling</title>
+    <title>Diogenes: Life in the Pithos</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="style.css" />
   </head>
@@ -11,90 +11,88 @@
       <header class="top-bar">
         <div class="brand">
           <span class="brand-mark">Δ</span>
-          <span class="brand-title">Diogenes: Barrel Rolling</span>
+          <span class="brand-title">Diogenes: Life in the Pithos</span>
         </div>
         <div class="top-actions">
-          <button id="btn-toggle-help" class="ghost-btn">How to play</button>
+          <button id="btn-toggle-help" class="ghost-btn">About</button>
         </div>
       </header>
 
-      <main class="layout">
-        <section class="game-panel glass">
-          <div class="game-header">
+      <main class="layout layout-rpg">
+        <section class="game-panel glass rpg-panel">
+          <div class="rpg-stats">
             <div class="stat">
-              <span class="stat-label">Score</span>
-              <span id="score" class="stat-value">0</span>
+              <span class="stat-label">Day</span>
+              <span id="stat-day" class="stat-value">1</span>
             </div>
             <div class="stat">
-              <span class="stat-label">Time</span>
-              <span id="time" class="stat-value">60</span>
+              <span class="stat-label">Health</span>
+              <span id="stat-health" class="stat-value">100</span>
             </div>
             <div class="stat">
-              <span class="stat-label">Mood</span>
-              <span id="mood" class="stat-value">Serene</span>
+              <span class="stat-label">Conviction</span>
+              <span id="stat-conviction" class="stat-value">0</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Notoriety</span>
+              <span id="stat-notoriety" class="stat-value">0</span>
             </div>
           </div>
-          <div id="game-viewport">
-            <canvas id="game-canvas"></canvas>
+
+          <div class="narrative-wrap">
+            <img id="scene-image" class="scene-image hidden" src="" alt="" />
+            <div id="narrative" class="narrative">
+              <p class="narrative-text">Loading…</p>
+            </div>
           </div>
-          <div class="game-footer">
-            <button id="btn-start" class="primary-btn">Start Rolling</button>
-            <span class="hint">
-              Move: WASD or Arrows · Throw: Space · Dash: Shift
-            </span>
+
+          <div id="choices" class="choices"></div>
+
+          <div class="game-footer rpg-footer">
+            <button id="btn-start" class="primary-btn">Begin your life in the agora</button>
           </div>
         </section>
 
         <section class="side-panel">
           <div class="card glass">
-            <h2>Leaderboard</h2>
-            <ul id="leaderboard" class="leaderboard-list"></ul>
+            <h2>Possessions <span class="hint-inline">(click to inspect)</span></h2>
+            <ul id="possessions" class="possessions-list"></ul>
+            <p id="possession-desc" class="possession-desc hidden"></p>
           </div>
 
           <div class="card glass" id="help-card">
-            <h2>Cynic’s Field Manual</h2>
+            <h2>About</h2>
             <p class="help-text">
-              You are Diogenes of Sinope, wheeling his barrel through a crowded Athenian plaza from a bird’s‑eye view.
+              You are Diogenes of Sinope, living in a pithos (large ceramic jar) in the Athenian agora.
+              Each norm you break is a test: does it have rational justification? Usually you decide it doesn’t.
             </p>
-            <ul class="help-list">
-              <li><strong>Roll</strong>: Move with WASD or the arrow keys around the plaza.</li>
-              <li><strong>Throw (Space)</strong>: Toss small stones in the direction you last moved.</li>
-              <li><strong>Dash (Shift)</strong>: Short burst that lets you slam into people for bonus points.</li>
-              <li><strong>Tip</strong>: Keep moving, chain dashes and hits without whiffing to build combos.</li>
-            </ul>
+            <p class="help-text">Your choices shape your conviction and notoriety. The story ends with your death, ~323 BC.</p>
           </div>
 
           <div class="card glass quote-card">
-            <h2>Today’s Maxim</h2>
+            <h2>Maxim</h2>
             <p id="quote"></p>
+          </div>
+
+          <div class="card glass">
+            <h2>Leaderboard</h2>
+            <ul id="leaderboard" class="leaderboard-list"></ul>
           </div>
         </section>
       </main>
 
       <div id="game-over-modal" class="modal hidden">
         <div class="modal-content glass">
-          <h2>Game Over</h2>
-          <p class="modal-score">
-            Final score: <span id="final-score">0</span>
-          </p>
+          <h2>End of the road</h2>
+          <p id="ending-text" class="ending-text"></p>
           <form id="score-form" class="score-form">
             <label>
               Engrave thy name:
-              <input
-                id="player-name"
-                type="text"
-                maxlength="16"
-                placeholder="Dog of Athens"
-                required
-              />
+              <input id="player-name" type="text" maxlength="16" placeholder="Dog of Athens" required />
             </label>
-            <button type="submit" class="primary-btn full-width">
-              Submit to Posterity
-            </button>
+            <button type="submit" class="primary-btn full-width">Submit to posterity</button>
           </form>
-          <button id="btn-play-again" class="ghost-btn full-width">
-            Roll Again
-          </button>
+          <button id="btn-play-again" class="ghost-btn full-width">Live again</button>
         </div>
       </div>
     </div>
@@ -102,4 +100,3 @@
     <script src="game.js" type="module"></script>
   </body>
 </html>
-

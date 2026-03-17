@@ -1,497 +1,439 @@
-const canvas = document.getElementById("game-canvas");
-const ctx = canvas.getContext("2d");
-canvas.width = 900;
-canvas.height = 500;
+// Diogenes RPG: Life in the Pithos
+// Choice-driven narrative ending with his death (~323 BC). No adult content.
 
-const scoreEl = document.getElementById("score");
-const timeEl = document.getElementById("time");
-const moodEl = document.getElementById("mood");
-const leaderboardEl = document.getElementById("leaderboard");
-const quoteEl = document.getElementById("quote");
-
+const narrativeEl = document.getElementById("narrative");
+const choicesEl = document.getElementById("choices");
 const btnStart = document.getElementById("btn-start");
 const btnToggleHelp = document.getElementById("btn-toggle-help");
 const helpCard = document.getElementById("help-card");
-
 const modal = document.getElementById("game-over-modal");
-const finalScoreEl = document.getElementById("final-score");
+const endingTextEl = document.getElementById("ending-text");
 const scoreForm = document.getElementById("score-form");
 const playerNameInput = document.getElementById("player-name");
 const btnPlayAgain = document.getElementById("btn-play-again");
+const leaderboardEl = document.getElementById("leaderboard");
+const quoteEl = document.getElementById("quote");
 
-const GAME_DURATION = 60_000;
-const keys = new Set();
+const statDay = document.getElementById("stat-day");
+const statHealth = document.getElementById("stat-health");
+const statConviction = document.getElementById("stat-conviction");
+const statNotoriety = document.getElementById("stat-notoriety");
+const possessionsEl = document.getElementById("possessions");
+const sceneImageEl = document.getElementById("scene-image");
+const possessionDescEl = document.getElementById("possession-desc");
+
+const SCENE_IMAGES = {
+  start: "images/pithos.png",
+  morning: "images/agora.png",
+  beg: "images/agora.png",
+  wander: "images/agora.png",
+  sunbathe: "images/agora.png",
+  lamp: "images/lamp.png",
+  plato: "images/agora.png",
+  alexander: "images/agora.png",
+  child_hands: "images/agora.png",
+  octopus: "images/agora.png",
+  after_activity: "images/pithos.png",
+  death: "images/death.png",
+  death_hold_breath: "images/death.png",
+  death_ox_foot: "images/death.png",
+  death_sun: "images/death.png",
+};
+
+const POSSESSION_DESCRIPTIONS = {
+  cloak: "Your only blanket. You sleep in it. The rest is luxury.",
+  bowl: "A wooden bowl. A child drinks from his hands. Why do you need this?",
+  lamp: "You carry it in daylight. You are looking for an honest man.",
+};
 
 const QUOTES = [
   "“I threw away my cup when I saw a child drinking from his hands.”",
-  "“It is the privilege of the gods to want nothing, and of godlike men to want little.”",
-  "“Of what use is a philosopher who doesn't hurt anybody's feelings?”",
+  "“It is the privilege of the gods to want nothing.”",
   "“I am looking for an honest man.”",
-  "Asked how to avoid being enslaved: “By not wanting to enslave others.”",
-  "When Alexander offered him anything: “Stand out of my sunlight.”",
+  "“Stand out of my sunlight.”",
+  "“Of what use is a philosopher who doesn't hurt anybody's feelings?”",
 ];
 
 function randomQuote() {
-  const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
-  quoteEl.textContent = q;
+  if (quoteEl) quoteEl.textContent = QUOTES[Math.floor(Math.random() * QUOTES.length)];
 }
 
-randomQuote();
+const DEATH_DAY = 55;
+const MIN_HEALTH_DEATH = 0;
 
-const world = {
-  status: "idle",
-  elapsed: 0,
-  score: 0,
-  combo: 0,
-  dashTimer: 0,
-  npcs: [],
-  projectiles: [],
+let state = {
+  day: 1,
+  health: 100,
+  conviction: 0,
+  notoriety: 0,
+  hasBowl: true,
+  hasLamp: false,
+  metAlexander: false,
+  metPlato: false,
+  ateOctopus: false,
+  threwBowl: false,
+  inEnding: false,
 };
 
-const diogenes = {
-  x: canvas.width / 2,
-  y: canvas.height / 2,
-  radius: 22,
-  vx: 0,
-  vy: 0,
-  facingX: 1,
-  facingY: 0,
-  rollPhase: 0,
-};
+function clamp(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
 
-function spawnNpc() {
-  const margin = 40;
-  const edge = Math.floor(Math.random() * 4);
-  let x, y;
-  if (edge === 0) {
-    x = Math.random() * (canvas.width - 2 * margin) + margin;
-    y = margin;
-  } else if (edge === 1) {
-    x = canvas.width - margin;
-    y = Math.random() * (canvas.height - 2 * margin) + margin;
-  } else if (edge === 2) {
-    x = Math.random() * (canvas.width - 2 * margin) + margin;
-    y = canvas.height - margin;
+function setSceneImage(sceneId) {
+  if (!sceneImageEl) return;
+  const src = SCENE_IMAGES[sceneId];
+  if (src) {
+    sceneImageEl.src = src;
+    sceneImageEl.alt = sceneId.replace(/_/g, " ");
+    sceneImageEl.classList.remove("hidden");
   } else {
-    x = margin;
-    y = Math.random() * (canvas.height - 2 * margin) + margin;
+    sceneImageEl.src = "";
+    sceneImageEl.classList.add("hidden");
   }
-
-  const angle = Math.random() * Math.PI * 2;
-  const speed = 0.05 + Math.random() * 0.08;
-
-  return {
-    x,
-    y,
-    r: 16,
-    vx: Math.cos(angle) * speed,
-    vy: Math.sin(angle) * speed,
-    stunned: 0,
-  };
 }
 
-for (let i = 0; i < 10; i++) {
-  world.npcs.push(spawnNpc());
-}
-
-function throwPebble() {
-  const now = performance.now();
-  if (world.lastThrow && now - world.lastThrow < 300) return;
-  world.lastThrow = now;
-
-  const dirLen = Math.hypot(diogenes.facingX, diogenes.facingY) || 1;
-  const dx = diogenes.facingX / dirLen;
-  const dy = diogenes.facingY / dirLen;
-
-  world.projectiles.push({
-    x: diogenes.x + dx * (diogenes.radius + 6),
-    y: diogenes.y + dy * (diogenes.radius + 6),
-    vx: dx * 0.7,
-    vy: dy * 0.7,
-    r: 4,
-    life: 1400,
-  });
-}
-
-function moodFromScore(score) {
-  if (score < 150) return "Serene";
-  if (score < 350) return "Rowdy";
-  if (score < 650) return "Unhinged";
-  return "Apocalyptic Cynic";
-}
-
-function updateUi() {
-  scoreEl.textContent = world.score.toString();
-  const remaining = Math.max(0, GAME_DURATION - world.elapsed);
-  timeEl.textContent = Math.ceil(remaining / 1000).toString();
-  moodEl.textContent = moodFromScore(world.score);
-}
-
-function handleInput(dt) {
-  const accel = world.dashTimer > 0 ? 0.09 : 0.045;
-  const maxSpeed = world.dashTimer > 0 ? 0.85 : 0.55;
-
-  let moveX = 0;
-  let moveY = 0;
-
-  if (keys.has("KeyW") || keys.has("ArrowUp")) moveY -= 1;
-  if (keys.has("KeyS") || keys.has("ArrowDown")) moveY += 1;
-  if (keys.has("KeyA") || keys.has("ArrowLeft")) moveX -= 1;
-  if (keys.has("KeyD") || keys.has("ArrowRight")) moveX += 1;
-
-  if (moveX !== 0 || moveY !== 0) {
-    const len = Math.hypot(moveX, moveY) || 1;
-    moveX /= len;
-    moveY /= len;
-
-    diogenes.vx += moveX * accel * dt * 60;
-    diogenes.vy += moveY * accel * dt * 60;
-
-    diogenes.facingX = moveX;
-    diogenes.facingY = moveY;
+function showPossessionDesc(id) {
+  if (!possessionDescEl) return;
+  const text = POSSESSION_DESCRIPTIONS[id];
+  if (text) {
+    possessionDescEl.textContent = text;
+    possessionDescEl.classList.remove("hidden");
   } else {
-    diogenes.vx *= 1 - 2.4 * dt;
-    diogenes.vy *= 1 - 2.4 * dt;
+    possessionDescEl.classList.add("hidden");
   }
-
-  const speed = Math.hypot(diogenes.vx, diogenes.vy);
-  if (speed > maxSpeed) {
-    const s = maxSpeed / speed;
-    diogenes.vx *= s;
-    diogenes.vy *= s;
-  }
-
-  diogenes.x += diogenes.vx * dt * 60;
-  diogenes.y += diogenes.vy * dt * 60;
-
-  const margin = 35;
-  diogenes.x = Math.max(margin, Math.min(canvas.width - margin, diogenes.x));
-  diogenes.y = Math.max(margin, Math.min(canvas.height - margin, diogenes.y));
-
-  diogenes.rollPhase += speed * dt * 10;
 }
 
-function dist2(ax, ay, bx, by) {
-  const dx = ax - bx;
-  const dy = ay - by;
-  return dx * dx + dy * dy;
-}
+function updateStatsUI() {
+  statDay.textContent = state.day;
+  statHealth.textContent = Math.max(0, state.health);
+  statConviction.textContent = state.conviction;
+  statNotoriety.textContent = state.notoriety;
 
-function updateNpcs(dt) {
-  const dashActive = world.dashTimer > 0;
-  const baseKnock = dashActive ? 26 : 12;
+  const items = [{ id: "cloak", label: "Cloak (blanket)" }];
+  if (state.hasBowl) items.push({ id: "bowl", label: "Wooden bowl" });
+  if (state.hasLamp) items.push({ id: "lamp", label: "Lamp" });
 
-  world.npcs.forEach((npc) => {
-    if (npc.stunned > 0) {
-      npc.stunned -= dt;
-    } else {
-      npc.x += npc.vx * dt * 60;
-      npc.y += npc.vy * dt * 60;
-    }
+  if (!possessionsEl) return;
+  possessionsEl.innerHTML = items
+    .map((it) => `<li><button type="button" class="possession-btn" data-possession="${it.id}">${it.label}</button></li>`)
+    .join("");
 
-    const margin = 25;
-    if (npc.x < margin || npc.x > canvas.width - margin) {
-      npc.vx *= -1;
-      npc.x = Math.max(margin, Math.min(canvas.width - margin, npc.x));
-    }
-    if (npc.y < margin || npc.y > canvas.height - margin) {
-      npc.vy *= -1;
-      npc.y = Math.max(margin, Math.min(canvas.height - margin, npc.y));
-    }
-
-    const rSum = diogenes.radius + npc.r;
-    if (dist2(diogenes.x, diogenes.y, npc.x, npc.y) < rSum * rSum) {
-      const impact = Math.hypot(diogenes.vx, diogenes.vy);
-      if (impact > 0.25) {
-        const dx = npc.x - diogenes.x;
-        const dy = npc.y - diogenes.y;
-        const len = Math.hypot(dx, dy) || 1;
-        npc.vx = (dx / len) * 0.5;
-        npc.vy = (dy / len) * 0.5;
-        npc.stunned = 350;
-        world.score += Math.round(baseKnock + world.combo * 3);
-        world.combo = Math.min(world.combo + 1, 15);
-      } else {
-        world.score = Math.max(0, world.score - 10);
-        world.combo = 0;
-      }
-    }
+  possessionsEl.querySelectorAll(".possession-btn").forEach((btn) => {
+    btn.addEventListener("click", () => showPossessionDesc(btn.dataset.possession));
   });
 }
 
-function updateProjectiles(dt) {
-  world.projectiles.forEach((p) => {
-    p.x += p.vx * dt * 60;
-    p.y += p.vy * dt * 60;
-    p.life -= dt * 60;
-  });
+function showNarrative(html) {
+  if (!narrativeEl) return;
+  const p = document.createElement("p");
+  p.className = "narrative-text";
+  p.textContent = html;
+  narrativeEl.innerHTML = "";
+  narrativeEl.appendChild(p);
+}
 
-  world.projectiles = world.projectiles.filter(
-    (p) =>
-      p.life > 0 &&
-      p.x > -20 &&
-      p.x < canvas.width + 20 &&
-      p.y > -20 &&
-      p.y < canvas.height + 20
-  );
-
-  world.projectiles.forEach((p) => {
-    world.npcs.forEach((npc) => {
-      if (npc.stunned > 0) return;
-      const rSum = p.r + npc.r;
-      if (dist2(p.x, p.y, npc.x, npc.y) < rSum * rSum) {
-        npc.stunned = 500;
-        const dx = npc.x - p.x;
-        const dy = npc.y - p.y;
-        const len = Math.hypot(dx, dy) || 1;
-        npc.vx = (dx / len) * 0.6;
-        npc.vy = (dy / len) * 0.6;
-        world.score += 18 + world.combo * 4;
-        world.combo = Math.min(world.combo + 1, 15);
-        p.life = -1;
-      }
+function showChoices(choices) {
+  choicesEl.innerHTML = "";
+  choices.forEach((c) => {
+    const btn = document.createElement("button");
+    btn.className = "choice-btn ghost-btn";
+    btn.textContent = c.text;
+    btn.addEventListener("click", () => {
+      if (c.effect) c.effect();
+      updateStatsUI();
+      goToScene(c.next);
     });
+    choicesEl.appendChild(btn);
   });
 }
 
-let lastFrameTime = performance.now();
+const SCENES = {
+  start: {
+    text: "You wake in your pithos—a large ceramic jar—in a corner of the Athenian agora. Your cloak is tangled around you. The sun is already high. Another day of testing whether any of this is necessary.",
+    choices: [
+      { text: "Rise and face the day.", next: "morning" },
+    ],
+  },
 
-function drawBackground() {
-  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  gradient.addColorStop(0, "#26264e");
-  gradient.addColorStop(1, "#0b0b19");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  morning: {
+    text: (s) => {
+      if (s.day >= DEATH_DAY - 2) return "Your body is failing. The agora still bustles. You know the end is near.";
+      return `Day ${s.day}. You step out of the jar. Where will you go?`;
+    },
+    choices: (s) => {
+      const opts = [
+        { text: "Beg in the marketplace.", next: "beg" },
+        { text: "Wander and harass the pretentious.", next: "wander" },
+        { text: "Lie in the sun by the portico.", next: "sunbathe" },
+      ];
+      if (s.hasLamp) opts.push({ text: "Carry your lamp in daylight.", next: "lamp" });
+      // One-time options: only if not already done
+      if (s.day >= 5 && !s.metPlato) opts.push({ text: "Seek out the philosophers.", next: "plato" });
+      if (s.day >= 8 && !s.metAlexander) opts.push({ text: "Go where the crowd is thickest.", next: "alexander" });
+      if (s.day >= 12 && !s.ateOctopus) opts.push({ text: "Find something raw to eat.", next: "octopus" });
+      if (s.hasBowl && s.day >= 4) opts.push({ text: "Watch the children at the fountain.", next: "child_hands" });
+      // Death as a voluntary option from day 10
+      if (s.day >= 10) opts.push({ text: "I am ready to die. Take me to the end.", next: "death" });
+      return opts;
+    },
+  },
 
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.04)";
-  ctx.lineWidth = 1;
-  const grid = 60;
-  for (let x = grid / 2; x < canvas.width; x += grid) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, canvas.height);
-    ctx.stroke();
+  beg: {
+    text: "You beg in the marketplace. Some give you figs and lentils; others look away. You eat what you get—enough to keep going.",
+    choices: [
+      {
+        text: "Continue.",
+        effect: () => {
+          state.health = clamp(state.health + 8, 0, 100);
+          state.day += 1;
+          if (state.day >= DEATH_DAY || state.health <= MIN_HEALTH_DEATH) state.nextDeath = true;
+        },
+        next: "after_activity",
+      },
+    ],
+  },
+
+  wander: {
+    text: "You wander the agora and needle the well-dressed and the self-important. They flinch. You ask them why they need so much. Most have no answer.",
+    choices: [
+      {
+        text: "Continue.",
+        effect: () => {
+          state.notoriety += 5;
+          state.conviction += 2;
+          state.day += 1;
+          if (state.day >= DEATH_DAY || state.health <= MIN_HEALTH_DEATH) state.nextDeath = true;
+        },
+        next: "after_activity",
+      },
+    ],
+  },
+
+  sunbathe: {
+    text: "You lie in the sun on the temple steps. The warmth is enough. You need nothing else. Someone will come and ask you what you want. They always do.",
+    choices: [
+      {
+        text: "Rest.",
+        effect: () => {
+          state.health = clamp(state.health + 5, 0, 100);
+          state.conviction += 1;
+          state.day += 1;
+          if (state.day >= DEATH_DAY || state.health <= MIN_HEALTH_DEATH) state.nextDeath = true;
+        },
+        next: "after_activity",
+      },
+    ],
+  },
+
+  lamp: {
+    text: "You carry your lamp through the marketplace in broad daylight. People stare. You tell them you are looking for an honest man. They laugh or walk away. You keep looking.",
+    choices: [
+      {
+        text: "Continue.",
+        effect: () => {
+          state.notoriety += 8;
+          state.conviction += 3;
+          state.day += 1;
+          if (state.day >= DEATH_DAY || state.health <= MIN_HEALTH_DEATH) state.nextDeath = true;
+        },
+        next: "after_activity",
+      },
+    ],
+  },
+
+  plato: {
+    text: "You find Plato and his students. Plato has just defined man as a featherless biped. You leave and return with a plucked chicken. You drop it in front of him: “Behold—Plato’s man.” The school is in uproar. You walk away.",
+    choices: [
+      {
+        text: "Leave.",
+        effect: () => {
+          state.metPlato = true;
+          state.notoriety += 15;
+          state.conviction += 10;
+          state.day += 1;
+          if (state.day >= DEATH_DAY || state.health <= MIN_HEALTH_DEATH) state.nextDeath = true;
+        },
+        next: "after_activity",
+      },
+    ],
+  },
+
+  alexander: {
+    text: "The crowd parts. Alexander the Great stands before you and says he has heard of you. He asks what he can give you. The sun is on your face. You say: “Stand out of my sunlight.” Silence. Then Alexander says that if he were not Alexander, he would wish to be Diogenes. You do not move.",
+    choices: [
+      {
+        text: "Let him go.",
+        effect: () => {
+          state.metAlexander = true;
+          state.notoriety += 20;
+          state.conviction += 12;
+          state.day += 1;
+          if (state.day >= DEATH_DAY || state.health <= MIN_HEALTH_DEATH) state.nextDeath = true;
+        },
+        next: "after_activity",
+      },
+    ],
+  },
+
+  child_hands: {
+    text: "You watch a child drink from his cupped hands at the fountain. No bowl. No vessel. You look at your wooden bowl. You throw it away. If a child needs nothing, neither do you.",
+    choices: [
+      {
+        text: "Walk on.",
+        effect: () => {
+          state.threwBowl = true;
+          state.hasBowl = false;
+          state.conviction += 8;
+          state.day += 1;
+          if (state.day >= DEATH_DAY || state.health <= MIN_HEALTH_DEATH) state.nextDeath = true;
+        },
+        next: "after_activity",
+      },
+    ],
+  },
+
+  octopus: {
+    text: "You find an octopus and eat it raw. Your stomach turns. You are sick for days. Someone asks if it was worth it. You say: it was worth dying to show that civilization is not necessary. You recover, barely.",
+    choices: [
+      {
+        text: "Survive.",
+        effect: () => {
+          state.ateOctopus = true;
+          state.health = clamp(state.health - 35, 0, 100);
+          state.conviction += 6;
+          state.day += 2;
+          if (state.day >= DEATH_DAY || state.health <= MIN_HEALTH_DEATH) state.nextDeath = true;
+        },
+        next: "after_activity",
+      },
+    ],
+  },
+
+  after_activity: {
+    text: (s) => {
+      if (s.nextDeath || s.day >= DEATH_DAY || s.health <= MIN_HEALTH_DEATH)
+        return "Your strength is gone. The agora fades. You know how this ends.";
+      return "Another evening. You return to your jar and your cloak. Tomorrow you will test the world again.";
+    },
+    choices: (s) => {
+      if (s.nextDeath || s.day >= DEATH_DAY || s.health <= MIN_HEALTH_DEATH) {
+        return [{ text: "…", next: "death" }];
+      }
+      return [{ text: "Sleep.", next: "morning" }];
+    },
+  },
+
+  death: {
+    text: "The year is 323 BC. Your body has had enough. In the agora they still talk about the man in the jar who asked for nothing. You have one last choice: how to end it.",
+    choices: [
+      { text: "Hold your breath. If life is a choice, so is death.", next: "death_hold_breath" },
+      { text: "Eat the raw ox foot they left. No compromise.", next: "death_ox_foot" },
+      { text: "Lie in the sun one last time. Refuse to perform.", next: "death_sun" },
+    ],
+  },
+
+  death_hold_breath: {
+    ending: true,
+    endingText: "You decide to hold your breath until it is over. You prove, in the end, that you could choose. They find you in your jar. The Dog of Athens is gone. Your conviction outlived you.",
+    choices: [],
+  },
+
+  death_ox_foot: {
+    ending: true,
+    endingText: "You eat the raw ox foot. You knew it might kill you. You eat it anyway—civilization is not necessary. You die as you lived: refusing to pretend. They say you died of your own recklessness. You would say you died of consistency.",
+    choices: [],
+  },
+
+  death_sun: {
+    ending: true,
+    endingText: "You lie in the sun and do nothing. No gesture. No last performance. When they ask what you want, you say nothing. You close your eyes. The light is enough. You go out like a lamp that no one needed to light.",
+    choices: [],
+  },
+};
+
+function resolveChoices(scene) {
+  if (!scene.choices) return [];
+  return typeof scene.choices === "function" ? scene.choices(state) : scene.choices;
+}
+
+function goToScene(id) {
+  const scene = SCENES[id];
+  if (!scene) return;
+
+  if (possessionDescEl) possessionDescEl.classList.add("hidden");
+  setSceneImage(id);
+
+  if (scene.ending) {
+    state.inEnding = true;
+    endingTextEl.textContent = scene.endingText || "";
+    modal.classList.remove("hidden");
+    choicesEl.innerHTML = "";
+    narrativeEl.innerHTML = "";
+    return;
   }
-  for (let y = grid / 2; y < canvas.height; y += grid) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(canvas.width, y);
-    ctx.stroke();
-  }
-  ctx.restore();
+
+  const text = typeof scene.text === "function" ? scene.text(state) : scene.text;
+  if (text) showNarrative(text);
+
+  const choices = resolveChoices(scene);
+  if (choices.length) showChoices(choices);
 }
 
-function drawDiogenes() {
-  const angle = Math.atan2(diogenes.facingY, diogenes.facingX);
-
-  ctx.save();
-  ctx.translate(diogenes.x, diogenes.y);
-  ctx.rotate(angle);
-
-  const barrelGradient = ctx.createRadialGradient(
-    -6,
-    -6,
-    3,
-    0,
-    0,
-    diogenes.radius + 3
-  );
-  barrelGradient.addColorStop(0, "#f7dd9b");
-  barrelGradient.addColorStop(0.35, "#c88b41");
-  barrelGradient.addColorStop(1, "#5f3416");
-
-  ctx.beginPath();
-  ctx.arc(0, 0, diogenes.radius, 0, Math.PI * 2);
-  ctx.fillStyle = barrelGradient;
-  ctx.fill();
-
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = "rgba(0,0,0,0.7)";
-  ctx.beginPath();
-  ctx.arc(0, 0, diogenes.radius, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.strokeStyle = "rgba(0,0,0,0.6)";
-  ctx.lineWidth = 2;
-  for (let i = 0; i < 4; i++) {
-    const spokeAngle = (i / 4) * Math.PI * 2 + diogenes.rollPhase;
-    ctx.beginPath();
-    ctx.moveTo(
-      Math.cos(spokeAngle) * (diogenes.radius - 4),
-      Math.sin(spokeAngle) * (diogenes.radius - 4)
-    );
-    ctx.lineTo(
-      Math.cos(spokeAngle) * (diogenes.radius + 2),
-      Math.sin(spokeAngle) * (diogenes.radius + 2)
-    );
-    ctx.stroke();
-  }
-
-  const headOffset = diogenes.radius * 0.7;
-  ctx.translate(headOffset, 0);
-  ctx.rotate(-angle);
-
-  ctx.beginPath();
-  ctx.arc(0, -diogenes.radius * 0.3, 10, 0, Math.PI * 2);
-  ctx.fillStyle = "#f7e1b4";
-  ctx.fill();
-
-  ctx.fillStyle = "#111011";
-  ctx.beginPath();
-  ctx.arc(3, -diogenes.radius * 0.35, 2.3, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = "#111011";
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(-3, -diogenes.radius * 0.12);
-  ctx.quadraticCurveTo(0, -diogenes.radius * 0.06, 3, -diogenes.radius * 0.12);
-  ctx.stroke();
-
-  ctx.restore();
+function startGame() {
+  state = {
+    day: 1,
+    health: 100,
+    conviction: 0,
+    notoriety: 0,
+    hasBowl: true,
+    hasLamp: false,
+    metAlexander: false,
+    metPlato: false,
+    ateOctopus: false,
+    threwBowl: false,
+    inEnding: false,
+    nextDeath: false,
+  };
+  state.hasLamp = true;
+  updateStatsUI();
+  btnStart.classList.add("hidden");
+  document.querySelector(".rpg-footer")?.classList.add("hidden");
+  goToScene("start");
 }
 
-function drawNpcs() {
-  world.npcs.forEach((npc) => {
-    ctx.save();
-    ctx.translate(npc.x, npc.y);
-
-    const baseColor = npc.stunned > 0 ? "#9ed5ff" : "#f1dcc1";
-    ctx.fillStyle = baseColor;
-    ctx.beginPath();
-    ctx.arc(0, 0, npc.r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
-    ctx.beginPath();
-    ctx.arc(0, -npc.r * 0.35, npc.r * 0.45, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-  });
+function showStart() {
+  setSceneImage("start");
+  if (narrativeEl) narrativeEl.innerHTML = "<p class=\"narrative-text\">You are Diogenes of Sinope. You live in a jar. You are about to live again.</p>";
+  if (choicesEl) choicesEl.innerHTML = "";
+  if (btnStart) btnStart.classList.remove("hidden");
+  document.querySelector(".rpg-footer")?.classList.remove("hidden");
+  if (possessionDescEl) possessionDescEl.classList.add("hidden");
 }
 
-function drawProjectiles() {
-  ctx.save();
-  ctx.fillStyle = "#f5e2be";
-  world.projectiles.forEach((p) => {
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fill();
-  });
-  ctx.restore();
-}
-
-function draw() {
-  drawBackground();
-  drawNpcs();
-  drawProjectiles();
-  drawDiogenes();
-}
-
-function resetGameState() {
-  world.status = "running";
-  world.elapsed = 0;
-  world.score = 0;
-  world.combo = 0;
-  world.dashTimer = 0;
-  world.projectiles = [];
-  world.npcs = [];
-  for (let i = 0; i < 12; i++) {
-    world.npcs.push(spawnNpc());
-  }
-
-  diogenes.x = canvas.width / 2;
-  diogenes.y = canvas.height / 2;
-  diogenes.vx = 0;
-  diogenes.vy = 0;
-  diogenes.rollPhase = 0;
-  diogenes.facingX = 1;
-  diogenes.facingY = 0;
-
-  updateUi();
-}
-
-function endGame() {
-  if (world.status !== "running") return;
-  world.status = "ended";
-  finalScoreEl.textContent = world.score.toString();
-  modal.classList.remove("hidden");
-  playerNameInput.focus();
-}
-
-function loop(now) {
-  const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
-  lastFrameTime = now;
-
-  if (world.status === "running") {
-    world.elapsed += dt * 1000;
-    if (world.dashTimer > 0) world.dashTimer -= dt * 1000;
-
-    handleInput(dt);
-    updateNpcs(dt);
-    updateProjectiles(dt);
-    updateUi();
-
-    if (world.elapsed >= GAME_DURATION) {
-      endGame();
-    }
-  }
-
-  draw();
-  requestAnimationFrame(loop);
-}
-
-function handleKeyDown(e) {
-  keys.add(e.code);
-  if (e.code === "Space") {
-    e.preventDefault();
-    if (world.status === "running") {
-      throwPebble();
-    }
-  }
-  if (e.code === "ShiftLeft" || e.code === "ShiftRight") {
-    if (world.status === "running" && world.dashTimer <= 0) {
-      world.dashTimer = 350;
-    }
-  }
-}
-
-function handleKeyUp(e) {
-  keys.delete(e.code);
-}
-
-window.addEventListener("keydown", handleKeyDown);
-window.addEventListener("keyup", handleKeyUp);
-
-btnStart.addEventListener("click", () => {
-  if (world.status === "running") return;
-  modal.classList.add("hidden");
-  resetGameState();
-});
+btnStart.addEventListener("click", startGame);
 
 btnToggleHelp.addEventListener("click", () => {
-  helpCard.classList.toggle("hidden");
+  if (helpCard) helpCard.classList.toggle("hidden");
 });
 
 btnPlayAgain.addEventListener("click", () => {
   modal.classList.add("hidden");
-  resetGameState();
+  showStart();
 });
 
 scoreForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const name = playerNameInput.value.trim();
   if (!name) return;
+  const score = state.conviction + state.notoriety + state.day * 2;
   try {
     await fetch("/api/scores", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, score: world.score, mode: "topdown-2d" }),
+      body: JSON.stringify({ name, score, mode: "rpg" }),
     });
   } catch (err) {
-    console.error("Error submitting score", err);
+    console.error(err);
   } finally {
     playerNameInput.value = "";
     modal.classList.add("hidden");
@@ -500,64 +442,40 @@ scoreForm.addEventListener("submit", async (e) => {
 });
 
 async function loadLeaderboard() {
+  if (!leaderboardEl) return;
   leaderboardEl.innerHTML = "";
   try {
     const res = await fetch("/api/scores");
     const scores = await res.json();
     if (!Array.isArray(scores) || scores.length === 0) {
-      const li = document.createElement("li");
-      li.textContent = "No scores yet. Be the first cynic.";
-      leaderboardEl.appendChild(li);
+      leaderboardEl.innerHTML = "<li>No scores yet.</li>";
       return;
     }
-
-    scores.forEach((entry, index) => {
+    scores.slice(0, 10).forEach((entry, i) => {
       const li = document.createElement("li");
-
-      const left = document.createElement("div");
-      left.style.display = "flex";
-      left.style.alignItems = "center";
-
-      const rank = document.createElement("span");
-      rank.className = "leaderboard-rank";
-      rank.textContent = String(index + 1).padStart(2, "0");
-
-      const name = document.createElement("span");
-      name.className = "leaderboard-name";
-      name.textContent = entry.name;
-
-      left.appendChild(rank);
-      left.appendChild(name);
-
-      const right = document.createElement("div");
-      const scoreSpan = document.createElement("span");
-      scoreSpan.className = "leaderboard-score";
-      scoreSpan.textContent = entry.score;
-
-      const modeSpan = document.createElement("span");
-      modeSpan.className = "leaderboard-mode";
-      modeSpan.textContent = entry.mode || "topdown-2d";
-
-      right.appendChild(scoreSpan);
-      right.appendChild(modeSpan);
-
-      li.appendChild(left);
-      li.appendChild(right);
-
+      li.textContent = `${i + 1}. ${entry.name} — ${entry.score}`;
       leaderboardEl.appendChild(li);
     });
   } catch (err) {
-    console.error("Error loading leaderboard", err);
-    const li = document.createElement("li");
-    li.textContent = "Could not load scores.";
-    leaderboardEl.appendChild(li);
+    leaderboardEl.innerHTML = "<li>Could not load scores.</li>";
   }
 }
 
-loadLeaderboard();
+function init() {
+  if (!narrativeEl || !choicesEl || !btnStart) return;
+  randomQuote();
+  updateStatsUI();
+  loadLeaderboard();
+  setSceneImage("start");
+  narrativeEl.innerHTML = "<p class=\"narrative-text\">You are Diogenes of Sinope. You live in a jar. You are about to live again.</p>";
+  choicesEl.innerHTML = "";
+  btnStart.classList.remove("hidden");
+  const footer = document.querySelector(".rpg-footer");
+  if (footer) footer.classList.remove("hidden");
+}
 
-requestAnimationFrame((t) => {
-  lastFrameTime = t;
-  loop(t);
-});
-
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}

@@ -154,6 +154,115 @@ body {
   background: radial-gradient(circle at top, #303465, #101020 60%, #050510);
 }
 
+/* RPG */
+.layout-rpg .rpg-panel {
+  min-height: 320px;
+}
+.narrative-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.scene-image {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.scene-image.hidden {
+  display: none;
+}
+.hint-inline {
+  font-size: 11px;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.55);
+}
+.possession-btn {
+  background: none;
+  border: none;
+  color: rgba(232, 232, 255, 0.95);
+  padding: 4px 0;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+}
+.possession-btn:hover {
+  color: #ffdf6b;
+  text-decoration-color: rgba(255, 223, 107, 0.6);
+}
+.possession-desc {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(232, 232, 255, 0.9);
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+}
+.possession-desc.hidden {
+  display: none;
+}
+.rpg-stats {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.narrative {
+  flex: 1;
+  min-height: 120px;
+  margin: 12px 0;
+}
+.narrative-text {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: rgba(245, 245, 255, 0.95);
+}
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.choice-btn {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 14px;
+  border-radius: 14px;
+}
+.choice-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.rpg-footer {
+  margin-top: 12px;
+}
+.possessions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  color: rgba(232, 232, 255, 0.9);
+}
+.possessions-list li {
+  padding: 4px 0;
+}
+.ending-text {
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: rgba(245, 245, 255, 0.95);
+}
+.hidden {
+  display: none !important;
+}
+
 .side-panel {
   display: flex;
   flex-direction: column;
